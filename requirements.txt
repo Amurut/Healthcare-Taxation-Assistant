@@ -1,0 +1,12 @@
+streamlit
+requests
+beautifulsoup4
+numpy
+scikit-learn
+sentence-transformers
+langchain
+huggingface-hub
+faiss-cpu
+openai
+PyMuPDF
+googlesearch-python
