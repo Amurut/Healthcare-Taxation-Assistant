@@ -10,3 +10,7 @@ faiss-cpu
 openai
 PyMuPDF
 googlesearch-python
+llama-index
+llama-index-llms-openai
+llama-index-embeddings-huggingface
+llama-index-readers-web
