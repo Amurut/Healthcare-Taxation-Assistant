@@ -7,10 +7,25 @@ sentence-transformers
 langchain
 huggingface-hub
 faiss-cpu
-openai
 PyMuPDF
 googlesearch-python
-llama-index
-llama-index-llms-openai
-llama-index-embeddings-huggingface
-llama-index-readers-web
+# requirements.txt
+streamlit
+requests
+beautifulsoup4
+numpy
+scikit-learn
+sentence-transformers
+langchain
+huggingface-hub
+faiss-cpu
+googlesearch-python
+PyMuPDF
+
+# --- Specify modern, compatible versions ---
+openai>=1.5.0
+llama-index>=0.10.0
+llama-index-llms-openai>=0.1.0
+llama-index-embeddings-huggingface>=0.1.0
+llama-index-agent-openai>=0.2.0
+llama-index-readers-web>=0.1.0
