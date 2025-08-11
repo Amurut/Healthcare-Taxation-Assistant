@@ -4,7 +4,7 @@ from googlesearch import search
 import streamlit as st
 
 def query_llm(messages, llm_choice, api_key, max_tokens=2048):
-    # ... (this function remains the same as before)
+    # ... (this function remains the same)
     try:
         if "OpenAI" in llm_choice:
             client = llm_clients.get_openai_client(api_key)
@@ -18,14 +18,12 @@ def query_llm(messages, llm_choice, api_key, max_tokens=2048):
             if not client: return "Hugging Face API key is missing or invalid."
             response = client.chat_completion(messages=messages, max_tokens=max_tokens, stream=False)
             return response.choices[0].message.content
-        else:
-            return "Error: Invalid LLM choice provided."
     except Exception as e:
         return f"API Error for {llm_choice}: {e}"
 
-# --- Agent Tools (no changes to the tool functions themselves) ---
+# --- Agent Tools (no changes to these functions) ---
 def use_irs_knowledge_base(query, chunks, index):
-    return retriever.retrieve_context(query, chunks, index, top_k=5) # Retrieve more context for direct answers
+    return retriever.retrieve_context(query, chunks, index, top_k=5)
 
 def use_legal_cases_knowledge_base(query, chunks, index):
     return retriever.retrieve_context(query, chunks, index)
@@ -39,50 +37,47 @@ def use_web_search(query, num_results=5):
     except Exception as e:
         return f"Web search failed: {e}", []
 
-# --- NEW: Streamlined Workflow for Direct Answers ---
+# --- UPDATED: Direct RAG Workflow with Self-Correction ---
 def run_direct_rag_answer(main_query, knowledge_bases, llm_choice, api_key):
     """
-    A simple, direct RAG workflow that only uses the IRS knowledge base
-    to answer the user's question directly.
+    A direct RAG workflow that uses a self-correction loop on the IRS knowledge base.
     """
     irs_chunks, irs_index = knowledge_bases['irs']
-    
-    # 1. Retrieve context from the primary knowledge base (IRS docs)
     context, sources = use_irs_knowledge_base(main_query, irs_chunks, irs_index)
-    
-    # 2. Generate a direct answer based on the context
-    direct_answer_prompt = [{
-        "role": "system",
-        "content": "You are a precise financial assistant. Answer the user's question directly and concisely based *only* on the provided context from IRS publications. Extract specific numbers, limits, and rules when available. Cite the source publication(s)."
-    }, {
-        "role": "user",
-        "content": f"Context:\n{context}\n\nQuestion: {main_query}"
-    }]
-    
-    answer = query_llm(direct_answer_prompt, llm_choice, api_key)
+
+    # 1. Generate Initial Answer
+    gen_prompt = [{"role": "system", "content": "You are a financial assistant. Based *only* on the provided context, give a direct answer to the user's question. Extract specific numbers if available."}, {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {main_query}"}]
+    initial_answer = query_llm(gen_prompt, llm_choice, api_key)
+
+    # 2. Critique the Answer
+    critique_prompt = [{"role": "system", "content": "You are a meticulous fact-checker. Critique the 'Draft Answer'. Did it correctly extract specific numbers and rules from the context? Is it faithful to the source? Suggest improvements for accuracy and directness."}, {"role": "user", "content": f"Context:\n{context}\n\nDraft Answer:\n{initial_answer}"}]
+    critique = query_llm(critique_prompt, llm_choice, api_key, max_tokens=512)
+
+    # 3. Refine the Answer
+    refine_prompt = [{"role": "system", "content": "You are a financial assistant. Refine the 'Draft Answer' using the 'Critique' to create a final, improved response that directly answers the user's original question using only the provided context. Cite the source publication(s)."}, {"role": "user", "content": f"User's Original Question: {main_query}\n\nContext:\n{context}\n\nDraft Answer:\n{initial_answer}\n\nCritique:\n{critique}\n\nFinal Improved Answer:"}]
+    final_answer = query_llm(refine_prompt, llm_choice, api_key)
     
     return {
-        "answer": answer,
+        "initial": initial_answer,
+        "critique": critique,
+        "final": final_answer,
         "sources": sources
     }
 
-# --- EXISTING: Full Agentic Workflow ---
+# --- Full Agentic Workflow ---
 def run_healthcare_tax_agent(main_query, knowledge_bases, llm_choice, api_key):
     """
     The full multi-tool, multi-step agentic workflow.
     """
-    # First, get a direct answer from the IRS docs
-    direct_answer_result = run_direct_rag_answer(main_query, knowledge_bases, llm_choice, api_key)
+    # This now starts with the self-correcting direct answer
+    direct_rag_results = run_direct_rag_answer(main_query, knowledge_bases, llm_choice, api_key)
     
-    # Unpack other knowledge bases
     cases_chunks, cases_index = knowledge_bases['cases']
     
-    # Agent Planning Step
-    plan_prompt = [{"role": "system", "content": "You are a master planner. Based on the user's query, create a two-step plan: 1. Find legal precedents for the query. 2. Find external opinions for the query. For each part, formulate a precise search query."}, {"role": "user", "content": f"User Query: {main_query}"}]
+    plan_prompt = [{"role": "system", "content": "You are a master planner. Create a two-step plan: 1. Find legal precedents for the query. 2. Find external opinions for the query. For each part, formulate a precise search query."}, {"role": "user", "content": f"User Query: {main_query}"}]
     plan_str = query_llm(plan_prompt, llm_choice, api_key, max_tokens=512)
     plan = [line for line in plan_str.split('\n') if line.strip()]
 
-    # Execute the rest of the plan
     cases_query = plan[0] if len(plan) > 0 else main_query
     cases_context, cases_sources = use_legal_cases_knowledge_base(cases_query, cases_chunks, cases_index)
     cases_answer_prompt = [{"role": "system", "content": "Based *only* on the provided legal case context, summarize any relevant precedents. Cite sources."}, {"role": "user", "content": f"Context:\n{cases_context}\n\nQuery: {cases_query}"}]
@@ -92,8 +87,7 @@ def run_healthcare_tax_agent(main_query, knowledge_bases, llm_choice, api_key):
     web_answer, web_sources = use_web_search(web_query)
 
     return {
-        "direct_answer": direct_answer_result['answer'],
-        "direct_sources": direct_answer_result['sources'],
+        "direct_answer": direct_rag_results, # Pass the entire result dictionary
         "plan": plan_str,
         "cases_answer": cases_answer,
         "cases_sources": cases_sources,
