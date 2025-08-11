@@ -12,9 +12,9 @@ googlesearch-python
 PyMuPDF
 
 # --- Specify modern, compatible versions ---
-openai>=1.5.0
-llama-index>=0.10.0
-llama-index-llms-openai>=0.1.0
-llama-index-embeddings-huggingface>=0.1.0
-llama-index-agent-openai>=0.2.0
-llama-index-readers-web>=0.1.0
+openai~=1.16.0
+llama-index~=0.10.45
+llama-index-llms-openai~=0.1.20
+llama-index-embeddings-huggingface~=0.2.0
+llama-index-agent-openai~=0.2.5
+llama-index-readers-web~=0.1.11
