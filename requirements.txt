@@ -1,18 +1,29 @@
-# requirements.txt
+# Healthcare Taxation Assistant - Requirements File
+# This file lists the dependencies required for the Healthcare Taxation Assistant project.
+# Core App and UI
 streamlit
 requests
+altair
+
+# Data Handling & Web Scraping
 beautifulsoup4
-numpy
-scikit-learn
-sentence-transformers
-langchain
-huggingface-hub
-faiss-cpu
 googlesearch-python
 PyMuPDF
 
-# --- Specify modern, compatible versions ---
+# Backend & ML
+numpy
+scikit-learn
+pandas
+faiss-cpu
+sentence-transformers
+langchain
+
+# --- Specify modern, compatible versions to ensure stability ---
 openai~=1.16.0
+httpx~=0.27.0
+huggingface-hub
+
+# LlamaIndex family
 llama-index~=0.10.45
 llama-index-llms-openai~=0.1.20
 llama-index-embeddings-huggingface~=0.2.0
