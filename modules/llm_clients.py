@@ -3,6 +3,7 @@ import streamlit as st
 from huggingface_hub import InferenceClient, HfApi
 from huggingface_hub.utils import GatedRepoError, RepositoryNotFoundError, HfHubHTTPError
 from openai import OpenAI, AuthenticationError
+import json
 
 @st.cache_resource
 def get_huggingface_client(api_key):
@@ -20,41 +21,38 @@ def get_openai_client(api_key):
 
 def verify_api_key(llm_choice, api_key):
     """
-    Verifies if the provided API key is valid for the selected service.
-    Returns True if valid, False otherwise, and prints errors to the console.
+    Verifies API key. Returns a tuple: (is_valid: bool, message: str).
+    Also prints the full error to the browser console for debugging.
     """
     if not api_key:
-        print("Verification failed: No API key provided.")
-        return False
+        return False, "Error: No API key provided."
         
     try:
         if "OpenAI" in llm_choice:
             client = OpenAI(api_key=api_key)
-            client.models.list()  # A lightweight call to check authentication
-            return True
+            client.models.list()
+            return True, "✅ OpenAI key is valid!"
         elif "Llama 3" in llm_choice:
-            HfApi().whoami(token=api_key) # Checks if the token is valid
-            return True
-    except AuthenticationError as e:
-        # --- ADDED: Specific logging for OpenAI ---
-        print(f"--- OpenAI Authentication Error ---")
-        print(f"Failed to authenticate with OpenAI. Please check the API key.")
-        print(f"Error Details: {e}")
-        print(f"---------------------------------")
-        return False
-    except HfHubHTTPError as e:
-        # --- ADDED: Specific logging for Hugging Face ---
-        print(f"--- Hugging Face Authentication Error ---")
-        print(f"Failed to authenticate with Hugging Face. Please check the HF Token.")
-        print(f"Error Details: {e}")
-        print(f"---------------------------------------")
-        return False
+            HfApi().whoami(token=api_key)
+            return True, "✅ Hugging Face token is valid!"
+            
     except Exception as e:
-        # --- ADDED: Catch-all for other unexpected errors (e.g., network) ---
-        print(f"--- An Unexpected Error Occurred During Verification ---")
-        print(f"Service: {llm_choice}")
-        print(f"Error Details: {e}")
-        print(f"------------------------------------------------------")
-        return False
+        # --- NEW: Logic to print the full error to the browser console ---
+        error_message_for_ui = "❌ Authentication Failed. Check browser console (F12) for details."
+        
+        # Format the full error for JavaScript
+        full_error_str = repr(e).replace('`', "'").replace('\\', '\\\\')
+        js_safe_error = json.dumps(full_error_str)
+
+        # Inject JavaScript to log the error
+        st.html(f"<script>console.error('API Key Verification Error for {llm_choice}:', {js_safe_error});</script>")
+        
+        # For the UI, we can return a simpler message or a specific part of the error
+        if isinstance(e, AuthenticationError):
+            error_message_for_ui = f"❌ OpenAI Auth Error: {e.body.get('message', 'Invalid key.')}"
+        elif isinstance(e, HfHubHTTPError):
+            error_message_for_ui = f"❌ HF Auth Error: {str(e)}"
+        
+        return False, error_message_for_ui
     
-    return False # Should not be reached, but as a fallback
+    return False, "❌ Verification failed due to an unknown error."
