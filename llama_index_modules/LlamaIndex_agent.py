@@ -121,3 +121,22 @@ def generate_answer_for_eval_hyde(query, llm_choice, api_key, indexes):
     context_list = [node.get_content() for node in response.source_nodes]
     
     return str(response), context_list
+
+def generate_answer_for_eval_multi_query(query, llm_choice, api_key, indexes):
+    """
+    A simplified one-shot generation process using LlamaIndex Multi-Query for evaluation.
+    Returns: (answer_string, list_of_context_strings)
+    """
+    model_map = {"OpenAI (GPT-4o)": "gpt-4o", "OpenAI (GPT-4o-mini)": "gpt-4o-mini", "OpenAI (GPT-4.1-mini)": "gpt-4.1-mini"}
+    model_id = model_map.get(llm_choice, "gpt-4o-mini")
+    llm = OpenAI(model=model_id, api_key=api_key)
+    Settings.llm = llm
+
+    irs_engine = indexes["irs"].as_query_engine(similarity_top_k=2)
+    query_engine_tool = QueryEngineTool.from_defaults(query_engine=irs_engine, name="irs_rules_search", description="Use for questions about U.S. healthcare taxation.")
+    query_engine = SubQuestionQueryEngine.from_defaults(query_engine_tools=[query_engine_tool], llm=llm)
+    
+    response = query_engine.query(query)
+    
+    context_list = [node.get_content() for node in response.source_nodes]
+    return str(response), context_list
