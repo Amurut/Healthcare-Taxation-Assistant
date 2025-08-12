@@ -17,6 +17,7 @@ pandas
 faiss-cpu
 sentence-transformers
 langchain
+ragas
 
 # Versions are pinned for consistency.
 openai==1.99.6
