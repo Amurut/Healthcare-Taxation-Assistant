@@ -99,3 +99,25 @@ def run_llama_index_agent(query, llm_choice, api_key, retrieval_strategy="Standa
     agent_response = agent.chat(agent_task)
 
     return direct_answer_results, str(agent_response)
+
+
+def generate_answer_for_eval_hyde(query, llm_choice, api_key, indexes):
+    """
+    A simplified one-shot generation process using LlamaIndex HyDE for evaluation.
+    Returns: (answer_string, list_of_context_strings)
+    """
+    model_map = {"OpenAI (GPT-4o)": "gpt-4o", "OpenAI (GPT-4o-mini)": "gpt-4o-mini", "OpenAI (GPT-4.1-mini)": "gpt-4.1-mini"}
+    model_id = model_map.get(llm_choice, "gpt-4o-mini")
+    llm = OpenAI(model=model_id, api_key=api_key)
+    Settings.llm = llm
+
+    # Get the HyDE query engine
+    query_engine = query_transformations.get_hyde_query_engine(indexes["irs"], llm)
+    
+    # Generate the response
+    response = query_engine.query(query)
+    
+    # RAGAS expects context as a list of strings
+    context_list = [node.get_content() for node in response.source_nodes]
+    
+    return str(response), context_list

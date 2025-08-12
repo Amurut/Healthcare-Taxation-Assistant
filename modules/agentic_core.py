@@ -93,3 +93,31 @@ def run_healthcare_tax_agent(main_query, knowledge_bases, llm_choice, api_key, r
         "cases_sources": cases_sources,
         "web_search_answer": web_answer
     }
+
+def generate_answer_for_eval_hyde(main_query, knowledge_bases, llm_choice, api_key):
+    """
+    A simplified one-shot generation process using HyDE for evaluation purposes.
+    Returns: (answer_string, list_of_context_strings)
+    """
+    irs_chunks, irs_index = knowledge_bases['irs']
+    
+    # Perform HyDE retrieval
+    retrieved_context, sources, _ = query_transformations.retrieve_with_hyde(
+        main_query, llm_choice, api_key, irs_chunks, irs_index
+    )
+    
+    # Perform a single generation step
+    one_shot_prompt = [{
+        "role": "system",
+        "content": "You are a precise financial assistant. Based *only* on the provided context from IRS publications, provide a direct and crisp answer to the user's question."
+    }, {
+        "role": "user",
+        "content": f"Context:\n{retrieved_context}\n\nQuestion: {main_query}"
+    }]
+    
+    answer = query_llm(one_shot_prompt, llm_choice, api_key)
+    
+    # RAGAS expects context as a list of strings
+    context_list = [c.strip() for c in retrieved_context.split("---") if c.strip()]
+    
+    return answer, context_list
