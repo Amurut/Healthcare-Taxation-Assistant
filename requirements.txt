@@ -17,6 +17,7 @@ pandas
 faiss-cpu
 sentence-transformers
 langchain
+langchain-text-splitters
 
 # Versions are pinned for consistency.
 openai==1.99.6

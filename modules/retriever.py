@@ -3,7 +3,7 @@ import streamlit as st
 import numpy as np
 import faiss
 from sentence_transformers import SentenceTransformer
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 @st.cache_resource
 def get_embedding_model():
